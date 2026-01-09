@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Teachable Machine + Caméra</title>
+<title>Teachable Machine – Prédictions</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <!-- Librairies -->
@@ -11,7 +11,7 @@
 
 <style>
     body { text-align: center; font-family: Arial; background: #f0f0f0; padding:20px; }
-    video { width: 90%; max-width: 400px; border-radius:10px; border:2px solid #555; }
+    video { width: 90%; max-width: 400px; border-radius:10px; border:2px solid #555; margin-bottom:15px; }
     #label { font-size:22px; font-weight:bold; margin-top:15px; }
     button { font-size:18px; padding:10px 20px; border-radius:8px; background:#4CAF50; color:white; border:none; margin-bottom:15px;}
     button:hover { background:#45a049; }
@@ -30,6 +30,7 @@
 const MODEL_PATH = "model/"; // dossier modèle
 let model, webcam, maxPredictions;
 
+// Attendre que la page soit chargée
 window.onload = () => {
     document.getElementById("startButton").addEventListener("click", start);
 };
@@ -45,7 +46,7 @@ async function start() {
 
         // Configurer la caméra
         webcam = new tmImage.Webcam(400, 400, true); // flip horizontal
-        await webcam.setup(); // demande d'autorisation caméra
+        await webcam.setup(); // demande autorisation caméra
         await webcam.play();
 
         // Afficher la vidéo
@@ -66,4 +67,22 @@ async function loop() {
     window.requestAnimationFrame(loop);
 }
 
-async funct
+async function predict() {
+    const prediction = await model.predict(webcam.canvas);
+
+    // trouver la meilleure prédiction
+    let best = prediction[0];
+    for(let i=1;i<prediction.length;i++){
+        if(prediction[i].probability>best.probability){
+            best=prediction[i];
+        }
+    }
+
+    // Afficher la prédiction directement sur la page
+    document.getElementById("label").innerHTML =
+        "Résultat : " + best.className + " (" + (best.probability*100).toFixed(1) + "%)";
+}
+</script>
+
+</body>
+</html>
