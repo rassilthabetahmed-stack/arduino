@@ -2,65 +2,91 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Reconnaissance Image - Teachable Machine</title>
+    <title>Teachable Machine + Arduino</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Librairies Teachable Machine -->
+    <!-- Librairies TensorFlow & Teachable Machine -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
 
     <style>
         body {
             text-align: center;
-            font-family: Arial;
-            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
         }
         video {
             width: 90%;
-            max-width: 400px;
+            max-width: 320px;
             border-radius: 10px;
+            border: 2px solid #555;
         }
-        #result {
+        #label {
             font-size: 22px;
-            margin-top: 15px;
             font-weight: bold;
+            margin-top: 15px;
+        }
+        button {
+            font-size: 18px;
+            padding: 10px 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+        }
+        button:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
-
 <body>
 
 <h2>📷 Reconnaissance d’Images</h2>
-<button onclick="init()">▶️ Démarrer</button>
+
+<button id="startButton">▶️ Démarrer</button>
 
 <br><br>
-<video id="webcam" autoplay playsinline></video>
-
-<div id="result">Résultat : ---</div>
+<video id="video" autoplay playsinline></video>
+<div id="label">Résultat : ---</div>
 
 <script>
-    const URL = "model/";
+    // Chemin du modèle
+    const MODEL_PATH = "model/";  
 
     let model, webcam, maxPredictions;
 
-    async function init() {
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
+    // Bouton start
+    document.getElementById("startButton").addEventListener("click", start);
 
-        model = await tmImage.load(modelURL, metadataURL);
-        maxPredictions = model.getTotalClasses();
+    async function start() {
+        try {
+            // Chargement du modèle Teachable Machine
+            const modelURL = MODEL_PATH + "model.json";
+            const metadataURL = MODEL_PATH + "metadata.json";
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
 
-        webcam = new tmImage.Webcam(300, 300, true);
-        await webcam.setup();
-        await webcam.play();
+            // Setup webcam
+            webcam = new tmImage.Webcam(300, 300, true); // flip horizontal
+            await webcam.setup(); // autorisation caméra
+            await webcam.play();
 
-        document.getElementById("webcam").srcObject = webcam.webcam.stream;
+            // Afficher la vidéo
+            document.getElementById("video").srcObject = webcam.webcam.stream;
 
-        window.requestAnimationFrame(loop);
+            // Boucle d’analyse
+            window.requestAnimationFrame(loop);
+        } catch (err) {
+            alert("Erreur : " + err);
+            console.error(err);
+        }
     }
 
     async function loop() {
-        webcam.update();
+        webcam.update(); // capture frame
         await predict();
         window.requestAnimationFrame(loop);
     }
@@ -68,25 +94,23 @@
     async function predict() {
         const prediction = await model.predict(webcam.canvas);
 
-        let bestClass = "";
-        let bestProb = 0;
-
-        for (let i = 0; i < maxPredictions; i++) {
-            if (prediction[i].probability > bestProb) {
-                bestProb = prediction[i].probability;
-                bestClass = prediction[i].className;
+        // Trouver la classe avec la plus grande probabilité
+        let best = prediction[0];
+        for (let i = 1; i < prediction.length; i++) {
+            if (prediction[i].probability > best.probability) {
+                best = prediction[i];
             }
         }
 
-        document.getElementById("result").innerHTML =
-            "Résultat : " + bestClass + " (" + (bestProb * 100).toFixed(1) + "%)";
+        document.getElementById("label").innerHTML =
+            "Résultat : " + best.className + " (" + (best.probability * 100).toFixed(1) + "%)";
 
-        envoyerCommande(bestClass);
+        // Envoyer commande vers Arduino (console pour l'instant)
+        envoyerCommande(best.className);
     }
 
     function envoyerCommande(classe) {
         let cmd = "";
-
         if (classe === "Avancer") cmd = "F";
         else if (classe === "Reculer") cmd = "B";
         else if (classe === "Gauche") cmd = "L";
@@ -95,12 +119,10 @@
 
         if (cmd !== "") {
             console.log("Commande envoyée :", cmd);
-            // 👉 ici on enverra vers Arduino (Bluetooth / WiFi)
+            // Ici : tu pourras remplacer par envoi Bluetooth ou Wi-Fi
         }
     }
 </script>
 
 </body>
 </html>
-
-
