@@ -2,87 +2,25 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Teachable Machine – Prédictions</title>
+<title>Test Caméra</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<!-- Librairies -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
-
-<style>
-    body { text-align: center; font-family: Arial; background: #f0f0f0; padding:20px; }
-    video { width: 90%; max-width: 400px; border-radius:10px; border:2px solid #555; margin-bottom:15px; }
-    #label { font-size:22px; font-weight:bold; margin-top:15px; }
-    button { font-size:18px; padding:10px 20px; border-radius:8px; background:#4CAF50; color:white; border:none; margin-bottom:15px;}
-    button:hover { background:#45a049; }
-</style>
 </head>
-
 <body>
-<h2>📷 Caméra + Teachable Machine</h2>
-
-<button id="startButton">▶️ Démarrer</button>
-<br>
+<h2>Test Caméra</h2>
 <video id="video" autoplay playsinline></video>
-<div id="label">Résultat : ---</div>
+<button onclick="startCamera()">Démarrer Caméra</button>
 
 <script>
-const MODEL_PATH = "model/"; // dossier modèle
-let model, webcam, maxPredictions;
-
-// Attendre que la page soit chargée
-window.onload = () => {
-    document.getElementById("startButton").addEventListener("click", start);
-};
-
-async function start() {
+let stream;
+async function startCamera() {
     try {
-        // Charger le modèle
-        const modelURL = MODEL_PATH + "model.json";
-        const metadataURL = MODEL_PATH + "metadata.json";
-        model = await tmImage.load(modelURL, metadataURL);
-        maxPredictions = model.getTotalClasses();
-        console.log("Modèle chargé ✅");
-
-        // Configurer la caméra
-        webcam = new tmImage.Webcam(400, 400, true); // flip horizontal
-        await webcam.setup(); // demande autorisation caméra
-        await webcam.play();
-
-        // Afficher la vidéo
-        document.getElementById("video").srcObject = webcam.webcam.stream;
-
-        // Démarrer boucle
-        window.requestAnimationFrame(loop);
-
-    } catch(err) {
-        alert("Erreur : " + err);
-        console.error(err);
+        stream = await navigator.mediaDevices.getUserMedia({video:true});
+        document.getElementById("video").srcObject = stream;
+    } catch(e) {
+        alert("Erreur caméra : " + e);
+        console.error(e);
     }
-}
-
-async function loop() {
-    webcam.update();
-    await predict();
-    window.requestAnimationFrame(loop);
-}
-
-async function predict() {
-    const prediction = await model.predict(webcam.canvas);
-
-    // trouver la meilleure prédiction
-    let best = prediction[0];
-    for(let i=1;i<prediction.length;i++){
-        if(prediction[i].probability>best.probability){
-            best=prediction[i];
-        }
-    }
-
-    // Afficher la prédiction directement sur la page
-    document.getElementById("label").innerHTML =
-        "Résultat : " + best.className + " (" + (best.probability*100).toFixed(1) + "%)";
 }
 </script>
-
 </body>
 </html>
