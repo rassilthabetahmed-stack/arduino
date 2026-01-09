@@ -1,60 +1,60 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Teachable Machine + Arduino</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>Teachable Machine + Caméra</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Librairies -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
+<!-- Librairies -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
 
-    <style>
-        body { text-align: center; font-family: Arial; background: #f0f0f0; padding:20px; }
-        video { width:90%; max-width:320px; border-radius:10px; border:2px solid #555; }
-        #label { font-size:22px; font-weight:bold; margin-top:15px; }
-        button { font-size:18px; padding:10px 20px; border-radius:8px; background:#4CAF50; color:white; border:none; }
-        button:hover { background:#45a049; }
-    </style>
+<style>
+    body { text-align: center; font-family: Arial; background: #f0f0f0; padding:20px; }
+    video { width: 90%; max-width: 400px; border-radius:10px; border:2px solid #555; }
+    #label { font-size:22px; font-weight:bold; margin-top:15px; }
+    button { font-size:18px; padding:10px 20px; border-radius:8px; background:#4CAF50; color:white; border:none; margin-bottom:15px;}
+    button:hover { background:#45a049; }
+</style>
 </head>
 
 <body>
-
-<h2>📷 Reconnaissance d’Images</h2>
+<h2>📷 Caméra + Teachable Machine</h2>
 
 <button id="startButton">▶️ Démarrer</button>
-<br><br>
+<br>
 <video id="video" autoplay playsinline></video>
 <div id="label">Résultat : ---</div>
 
 <script>
-const MODEL_PATH = "model/";  // dossier modèle
-
+const MODEL_PATH = "model/"; // dossier modèle
 let model, webcam, maxPredictions;
 
-// Attendre que la page soit chargée
 window.onload = () => {
     document.getElementById("startButton").addEventListener("click", start);
 };
 
 async function start() {
     try {
-        // Charger le modèle Teachable Machine
+        // Charger le modèle
         const modelURL = MODEL_PATH + "model.json";
         const metadataURL = MODEL_PATH + "metadata.json";
-        model = await tmImage.load(modelURL, metadataURL);  // ✅ tmImage est défini maintenant
+        model = await tmImage.load(modelURL, metadataURL);
         maxPredictions = model.getTotalClasses();
+        console.log("Modèle chargé ✅");
 
-        // Setup webcam
-        webcam = new tmImage.Webcam(300, 300, true);
-        await webcam.setup(); 
+        // Configurer la caméra
+        webcam = new tmImage.Webcam(400, 400, true); // flip horizontal
+        await webcam.setup(); // demande d'autorisation caméra
         await webcam.play();
 
+        // Afficher la vidéo
         document.getElementById("video").srcObject = webcam.webcam.stream;
 
-        // Boucle d'analyse
+        // Démarrer boucle
         window.requestAnimationFrame(loop);
-    } catch (err) {
+
+    } catch(err) {
         alert("Erreur : " + err);
         console.error(err);
     }
@@ -66,34 +66,4 @@ async function loop() {
     window.requestAnimationFrame(loop);
 }
 
-async function predict() {
-    const prediction = await model.predict(webcam.canvas);
-
-    let best = prediction[0];
-    for(let i=1;i<prediction.length;i++){
-        if(prediction[i].probability > best.probability){
-            best = prediction[i];
-        }
-    }
-
-    document.getElementById("label").innerHTML = 
-        "Résultat : " + best.className + " (" + (best.probability*100).toFixed(1) + "%)";
-
-    envoyerCommande(best.className);
-}
-
-function envoyerCommande(classe){
-    let cmd = "";
-    if(classe==="A") cmd="F";
-    else if(classe==="b") cmd="B";
-    else if(classe==="Gauche") cmd="L";
-    else if(classe==="Droite") cmd="R";
-    else if(classe==="Stop") cmd="S";
-
-    if(cmd!=="") console.log("Commande envoyée :", cmd);
-}
-</script>
-
-</body>
-</html>
-
+async funct
