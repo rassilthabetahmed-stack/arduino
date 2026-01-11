@@ -1,80 +1,93 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="ar">
 <head>
-<meta charset="UTF-8">
-<title>Caméra + Teachable Machine</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Smart Wheelchair</title>
 
-<!-- Librairies -->
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image"></script>
 
-<style>
-body { text-align:center; font-family:Arial; background:#f0f0f0; padding:20px; }
-video { width:90%; max-width:400px; border-radius:10px; border:2px solid #555; margin-bottom:15px; }
-#predictions { font-size:18px; font-weight:bold; margin-top:10px; }
-button { font-size:18px; padding:10px 20px; border-radius:8px; background:#4CAF50; color:white; border:none; margin-bottom:15px;}
-button:hover { background:#45a049; }
-</style>
+  <style>
+    body { text-align: center; font-family: Arial; }
+    video { width: 90%; border-radius: 10px; }
+    button { font-size: 18px; margin: 10px; padding: 10px 20px; }
+  </style>
 </head>
 
 <body>
-<h2>📷 Caméra + Prédictions TM</h2>
 
-<button id="startButton">▶️ Démarrer</button>
+<h2>🚀 Smart Wheelchair Control</h2>
+
+<button onclick="connectBluetooth()">🔵 Bluetooth</button>
 <br>
-<video id="video" autoplay playsinline></video>
-<div id="predictions">Prédictions : ---</div>
+<video id="webcam" autoplay></video>
+<p id="result">---</p>
 
 <script>
-const MODEL_PATH = "model/"; // dossier contenant model.json, metadata.json, weights.bin
-let model, webcam, maxPredictions;
+const URL = "model/";
 
-window.onload = () => {
-    document.getElementById("startButton").addEventListener("click", start);
-};
+let model, webcam, btChar;
 
-async function start() {
-    try {
-        // Charger le modèle Teachable Machine
-        model = await tmImage.load(MODEL_PATH + "model.json", MODEL_PATH + "metadata.json");
-        maxPredictions = model.getTotalClasses();
-        console.log("Modèle chargé ✅");
+// ===== Load Model =====
+async function init() {
+  model = await tmImage.load(URL + "model.json", URL + "metadata.json");
 
-        // Configurer la webcam
-        webcam = new tmImage.Webcam(400, 400, true); // flip horizontal
-        await webcam.setup();
-        await webcam.play();
+  webcam = new tmImage.Webcam(300, 300, true);
+  await webcam.setup();
+  await webcam.play();
 
-        // Afficher le flux vidéo
-        document.getElementById("video").srcObject = webcam.webcam.stream;
+  document.getElementById("webcam").srcObject = webcam.webcam;
 
-        // Boucle pour analyser chaque frame
-        window.requestAnimationFrame(loop);
-
-    } catch(err) {
-        alert("Erreur : " + err);
-        console.error(err);
-    }
+  window.requestAnimationFrame(loop);
 }
 
 async function loop() {
-    webcam.update();
-    await predict();
-    window.requestAnimationFrame(loop);
+  webcam.update();
+  await predict();
+  window.requestAnimationFrame(loop);
 }
 
+// ===== Prediction =====
 async function predict() {
-    const prediction = await model.predict(webcam.canvas);
+  const prediction = await model.predict(webcam.canvas);
 
-    // Afficher toutes les prédictions
-    let text = "";
-    prediction.forEach(p => {
-        text += `${p.className} : ${(p.probability*100).toFixed(1)}%<br>`;
-    });
+  let best = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
 
-    document.getElementById("predictions").innerHTML = text;
+  document.getElementById("result").innerText =
+    best.className + " : " + best.probability.toFixed(2);
+
+  if (best.probability > 0.8 && btChar) {
+    sendCommand(best.className);
+  }
 }
+
+// ===== Bluetooth =====
+async function connectBluetooth() {
+  const device = await navigator.bluetooth.requestDevice({
+    acceptAllDevices: true,
+    optionalServices: ['00001101-0000-1000-8000-00805f9b34fb']
+  });
+
+  const server = await device.gatt.connect();
+  const service = await server.getPrimaryService('00001101-0000-1000-8000-00805f9b34fb');
+  btChar = await service.getCharacteristic('00001101-0000-1000-8000-00805f9b34fb');
+
+  alert("Bluetooth Connected");
+}
+
+function sendCommand(cmd) {
+  let value = 'B';
+
+  if (cmd === "Forward") value = 'F';
+  if (cmd === "Left") value = 'L';
+  if (cmd === "Right") value = 'R';
+  if (cmd === "Stop") value = 'B';
+
+  btChar.writeValue(new TextEncoder().encode(value));
+}
+
+// Start
+init();
 </script>
 
 </body>
