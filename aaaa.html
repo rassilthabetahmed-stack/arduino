@@ -2,98 +2,71 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>Smart Wheelchair - Bluetooth HC05</title>
-  
-  <!-- TensorFlow.js & Teachable Machine -->
+  <title>Smart Wheelchair - Camera + HC-05</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image"></script>
 
   <style>
-    body { text-align: center; font-family: Arial; background: #f5f5f5; }
-    video { width: 90%; max-width: 400px; border-radius: 10px; margin-top: 20px; }
-    button { font-size: 18px; margin: 10px; padding: 10px 20px; border-radius: 5px; }
-    #result { font-size: 20px; margin-top: 10px; font-weight: bold; }
+    body { text-align: center; font-family: Arial; background: #f0f0f0; }
+    h2 { margin-top: 20px; }
+    
+    /* مربع الكاميرا */
+    #camera-box {
+      display: inline-block;
+      width: 320px;
+      height: 320px;
+      border: 4px solid #4CAF50;
+      border-radius: 15px;
+      overflow: hidden;
+      background: #000;
+      margin-top: 20px;
+    }
+    
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    button {
+      font-size: 18px;
+      margin: 10px;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #result {
+      font-size: 20px;
+      margin-top: 10px;
+      font-weight: bold;
+    }
   </style>
 </head>
 
 <body>
-<h2>🚀 Smart Wheelchair Control (HC-05)</h2>
+<h2>🚀 Smart Wheelchair Control</h2>
 
 <button onclick="connectBluetooth()">🔵 Connect HC-05</button>
-<video id="webcam" autoplay></video>
+
+<!-- مربع الكاميرا -->
+<div id="camera-box">
+  <video id="webcam" autoplay></video>
+</div>
+
 <p id="result">---</p>
 
 <script>
-const MODEL_URL = "PUT_YOUR_MODEL_URL_HERE/"; // ضع رابط نموذج Teachable Machine هنا
+const MODEL_URL = "model/"; // ضع رابط نموذج Teachable Machine هنا
 let model, webcam, btChar;
 
 // ===== تحميل النموذج وتشغيل الكاميرا =====
 async function init() {
   model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
 
-  webcam = new tmImage.Webcam(300, 300, true);
+  webcam = new tmImage.Webcam(320, 320, true);
   await webcam.setup();
   await webcam.play();
 
   document.getElementById("webcam").srcObject = webcam.webcam;
-  window.requestAnimationFrame(loop);
-}
-
-// ===== تحديث الفيديو وعمل التنبؤ =====
-async function loop() {
-  webcam.update();
-  await predict();
-  window.requestAnimationFrame(loop);
-}
-
-// ===== التنبؤ بواسطة Teachable Machine =====
-async function predict() {
-  const prediction = await model.predict(webcam.canvas);
-
-  // نأخذ أعلى احتمالية
-  let best = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
-  document.getElementById("result").innerText =
-    best.className + " : " + (best.probability * 100).toFixed(0) + "%";
-
-  // إرسال أوامر إذا تم الاتصال
-  if (btChar && best.probability > 0.8) {
-    sendCommand(best.className);
-  }
-}
-
-// ===== الاتصال بالبلوتوث (فلتر HC-05/06 فقط) =====
-async function connectBluetooth() {
-  try {
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: "HC" }],  // يظهر الأجهزة التي تبدأ بـ "HC"
-      optionalServices: ['00001101-0000-1000-8000-00805f9b34fb'] // Serial Port
-    });
-
-    const server = await device.gatt.connect();
-    const service = await server.getPrimaryService('00001101-0000-1000-8000-00805f9b34fb');
-    btChar = await service.getCharacteristic('00001101-0000-1000-8000-00805f9b34fb');
-
-    alert("✅ Connected to " + device.name);
-  } catch (err) {
-    alert("❌ Connection failed: " + err);
-  }
-}
-
-// ===== إرسال أوامر إلى Arduino =====
-function sendCommand(cmd) {
-  let value = 'B'; // Stop افتراضي
-
-  if (cmd === "Forward") value = 'F';
-  if (cmd === "Left") value = 'L';
-  if (cmd === "Right") value = 'R';
-  if (cmd === "Stop") value = 'B';
-
-  btChar.writeValue(new TextEncoder().encode(value));
-}
-
-// ===== بدء كل شيء =====
-init();
-</script>
-
-</body>
-</html>
+  window.requestAnimationFr
