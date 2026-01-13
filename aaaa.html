@@ -1,72 +1,62 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Smart Wheelchair - Camera + HC-05</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image"></script>
-
+  <title>HC-05 Bluetooth Test</title>
   <style>
-    body { text-align: center; font-family: Arial; background: #f0f0f0; }
-    h2 { margin-top: 20px; }
-    
-    /* مربع الكاميرا */
-    #camera-box {
-      display: inline-block;
-      width: 320px;
-      height: 320px;
-      border: 4px solid #4CAF50;
-      border-radius: 15px;
-      overflow: hidden;
-      background: #000;
-      margin-top: 20px;
+    body {
+      font-family: Arial;
+      text-align: center;
+      margin-top: 50px;
     }
-    
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    
     button {
-      font-size: 18px;
-      margin: 10px;
-      padding: 10px 20px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    #result {
       font-size: 20px;
-      margin-top: 10px;
-      font-weight: bold;
+      padding: 10px 25px;
+    }
+    #log {
+      margin-top: 20px;
+      font-size: 16px;
+      color: blue;
+      white-space: pre-line;
     }
   </style>
 </head>
 
 <body>
-<h2>🚀 Smart Wheelchair Control</h2>
 
-<button onclick="connectBluetooth()">🔵 Connect HC-05</button>
+<h2>Bluetooth HC-05 Test</h2>
 
-<!-- مربع الكاميرا -->
-<div id="camera-box">
-  <video id="webcam" autoplay></video>
-</div>
+<button onclick="connect()">Connect HC-05</button>
 
-<p id="result">---</p>
+<div id="log">Status: idle</div>
 
 <script>
-const MODEL_URL = "model/"; // ضع رابط نموذج Teachable Machine هنا
-let model, webcam, btChar;
+async function connect() {
+  const log = document.getElementById("log");
+  log.innerText = "Status: button clicked";
 
-// ===== تحميل النموذج وتشغيل الكاميرا =====
-async function init() {
-  model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+  if (!navigator.bluetooth) {
+    log.innerText = "❌ Web Bluetooth NOT supported on this browser";
+    return;
+  }
 
-  webcam = new tmImage.Webcam(320, 320, true);
-  await webcam.setup();
-  await webcam.play();
+  try {
+    log.innerText = "🔍 Searching for devices...";
 
-  document.getElementById("webcam").srcObject = webcam.webcam;
-  window.requestAnimationFr
+    const device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true
+    });
+
+    log.innerText =
+      "✅ Device selected:\n" +
+      "Name: " + device.name + "\n" +
+      "ID: " + device.id;
+
+  } catch (error) {
+    log.innerText = "❌ Error:\n" + error;
+  }
+}
+</script>
+
+</body>
+</html>
