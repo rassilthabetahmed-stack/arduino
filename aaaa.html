@@ -2,50 +2,59 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Smart Wheelchair Control</title>
+<title>Smart Wheelchair - Vision</title>
 
+<!-- TensorFlow.js -->
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0"></script>
+
+<!-- Teachable Machine Image -->
 <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
 
 <style>
 body {
-  font-family: Arial;
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f2f2f2;
   text-align: center;
-  background: #f5f5f5;
 }
-#camera {
+
+h2 {
+  background: #1e88e5;
+  color: white;
+  padding: 10px;
+  margin: 0;
+}
+
+#camera-container {
+  margin-top: 10px;
+}
+
+canvas {
   border: 4px solid #333;
-  width: 320px;
-  height: 240px;
-  margin: auto;
+  border-radius: 10px;
 }
-button {
-  padding: 10px 20px;
-  font-size: 16px;
+
+#result {
+  font-size: 24px;
   margin: 10px;
+  color: #333;
 }
 </style>
 </head>
 
 <body>
 
-<h2>Smart Wheelchair – Camera & Bluetooth</h2>
+<h2>Smart Wheelchair – Camera IA</h2>
 
-<div id="camera"></div>
+<div id="camera-container"></div>
 
-<p id="result">---</p>
-
-<button onclick="connectBluetooth()">Connect HC-05</button>
+<div id="result">Commande : ---</div>
 
 <script>
 const URL = "./";
 
 let model, webcam, maxPredictions;
-let bluetoothDevice, bluetoothCharacteristic;
-
-// UUID générique (HC-05)
-const SERVICE_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb";
-const CHARACTERISTIC_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb";
+let lastCommand = "";
 
 // 🔹 Charger le modèle
 async function init() {
@@ -59,19 +68,19 @@ async function init() {
   await webcam.setup({ facingMode: "environment" }); // caméra arrière
   await webcam.play();
 
-  document.getElementById("camera").appendChild(webcam.canvas);
+  document.getElementById("camera-container").appendChild(webcam.canvas);
 
   window.requestAnimationFrame(loop);
 }
 
-// 🔹 Boucle caméra
+// 🔹 Boucle principale
 async function loop() {
   webcam.update();
   await predict();
   window.requestAnimationFrame(loop);
 }
 
-// 🔹 Reconnaissance
+// 🔹 Reconnaissance d'image
 async function predict() {
   const prediction = await model.predict(webcam.canvas);
 
@@ -82,38 +91,30 @@ async function predict() {
     }
   }
 
-  if (best.probability > 0.90) {
+  if (best.probability > 0.90 && best.className !== lastCommand) {
+    lastCommand = best.className;
     document.getElementById("result").innerHTML =
-      "Commande: <b>" + best.className + "</b>";
+      "Commande : <b>" + best.className + "</b>";
 
-    sendCommand(best.className);
+    sendToApp(best.className);
   }
 }
 
-// 🔹 Bluetooth
-async function connectBluetooth() {
-  bluetoothDevice = await navigator.bluetooth.requestDevice({
-    filters: [{ namePrefix: "HC" }],
-    optionalServices: [SERVICE_UUID]
-  });
+// 🔹 Envoyer la commande vers MIT App Inventor
+function sendToApp(label) {
+  let cmd = "";
 
-  const server = await bluetoothDevice.gatt.connect();
-  const service = await server.getPrimaryService(SERVICE_UUID);
-  bluetoothCharacteristic =
-    await service.getCharacteristic(CHARACTERISTIC_UUID);
+  if (label === "F") cmd = "F";
+  if (label === "L") cmd = "L";
+  if (label === "R") cmd = "R";
+  if (label === "S") cmd = "S";
 
-  alert("Bluetooth connecté !");
+  if (cmd !== "" && window.AppInventor) {
+    window.AppInventor.setWebViewString(cmd);
+  }
 }
 
-// 🔹 Envoyer commande
-function sendCommand(cmd) {
-  if (!bluetoothCharacteristic) return;
-
-  const encoder = new TextEncoder();
-  bluetoothCharacteristic.writeValue(encoder.encode(cmd));
-}
-
-// Lancer au chargement
+// Lancer l'application
 init();
 </script>
 
